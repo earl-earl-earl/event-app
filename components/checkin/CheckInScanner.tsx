@@ -61,6 +61,14 @@ function getQrBoxSize(viewfinderWidth: number, viewfinderHeight: number): number
   return clampQrBoxSize(Math.floor(minEdge * 0.6));
 }
 
+function isLikelyMobileDevice(): boolean {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent ?? "");
+}
+
 function pickPreferredCamera(cameras: CameraDevice[]): CameraDevice | undefined {
   return cameras.find((camera) => /back|rear|environment/i.test(camera.label));
 }
@@ -196,6 +204,11 @@ export function CheckInScanner() {
   const [isScannerReady, setIsScannerReady] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+  const [availableCameras, setAvailableCameras] = useState<CameraDevice[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  const [activeCameraId, setActiveCameraId] = useState<string | null>(null);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
 
   const [qrBoxSize, setQrBoxSize] = useState<number>(220);
 
@@ -208,6 +221,11 @@ export function CheckInScanner() {
   const maskRadius = Math.max(Math.floor(qrBoxSize / 2), 80);
   const maskInnerRadius = Math.max(maskRadius - 2, 60);
   const scanLineWidth = Math.max(Math.round(qrBoxSize * 0.8), 140);
+  const canSwitchCamera = isMobileDevice && availableCameras.length > 1;
+  const activeCameraLabel =
+    availableCameras.find((camera) => camera.id === activeCameraId)?.label
+    ?? availableCameras.find((camera) => camera.id === selectedCameraId)?.label
+    ?? "Camera";
 
   // Auto-clear the result banner after 4 seconds
   const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -308,6 +326,10 @@ export function CheckInScanner() {
   );
 
   useEffect(() => {
+    setIsMobileDevice(isLikelyMobileDevice());
+  }, []);
+
+  useEffect(() => {
     const element = viewfinderWrapperRef.current;
     if (!element) return;
 
@@ -333,12 +355,18 @@ export function CheckInScanner() {
     let cancelled = false;
 
     async function startScanner() {
+      setIsScannerReady(false);
+
       try {
         const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
         const cameras = await Html5Qrcode.getCameras();
         if (cancelled) return;
 
+        setAvailableCameras(cameras);
+
         if (!cameras || cameras.length === 0) {
+          setActiveCameraId(null);
+          setIsSwitchingCamera(false);
           setScannerError("No camera found. Use the manual entry below.");
           return;
         }
@@ -351,6 +379,10 @@ export function CheckInScanner() {
         scannerRef.current = scanner;
 
         const preferredCamera = pickPreferredCamera(cameras);
+        const selectedCamera =
+          selectedCameraId
+            ? cameras.find((camera) => camera.id === selectedCameraId)
+            : undefined;
         const onScanSuccess = (decodedText: string) => { void verifyScan(decodedText); };
         const onScanFailure = () => { /* ignore frame errors */ };
         const scanConfig = {
@@ -366,24 +398,45 @@ export function CheckInScanner() {
           },
         };
 
-        // Try known rear cameras first, then environment-facing constraint, then safe fallbacks.
+        // Try selected camera first, then known rear cameras, then safe fallbacks.
         const cameraStartAttempts: Array<string | MediaTrackConstraints> = [];
+        const pushCameraAttempt = (candidate: string | MediaTrackConstraints) => {
+          const exists = cameraStartAttempts.some((attempt) => attempt === candidate);
+          if (!exists) {
+            cameraStartAttempts.push(candidate);
+          }
+        };
+
+        if (selectedCamera?.id) {
+          pushCameraAttempt(selectedCamera.id);
+        }
         if (preferredCamera?.id) {
-          cameraStartAttempts.push(preferredCamera.id);
+          pushCameraAttempt(preferredCamera.id);
         }
         cameraStartAttempts.push({ facingMode: "environment" });
         if (!preferredCamera?.id && cameras[cameras.length - 1]?.id) {
-          cameraStartAttempts.push(cameras[cameras.length - 1].id);
+          pushCameraAttempt(cameras[cameras.length - 1].id);
         }
         if (cameras[0]?.id) {
-          cameraStartAttempts.push(cameras[0].id);
+          pushCameraAttempt(cameras[0].id);
         }
 
         let startError: unknown;
+        let detectedActiveCameraId: string | null = null;
         for (const cameraTarget of cameraStartAttempts) {
           try {
             await scanner.start(cameraTarget, scanConfig, onScanSuccess, onScanFailure);
             startError = undefined;
+
+            if (typeof cameraTarget === "string") {
+              detectedActiveCameraId = cameraTarget;
+            } else {
+              const deviceId = scanner.getRunningTrackSettings()?.deviceId;
+              if (typeof deviceId === "string" && deviceId.length > 0) {
+                detectedActiveCameraId = deviceId;
+              }
+            }
+
             break;
           } catch (error) {
             startError = error;
@@ -396,10 +449,19 @@ export function CheckInScanner() {
 
         if (!cancelled) {
           setScannerError(null);
+          setActiveCameraId(
+            detectedActiveCameraId
+            ?? selectedCamera?.id
+            ?? preferredCamera?.id
+            ?? cameras[0]?.id
+            ?? null,
+          );
           setIsScannerReady(true);
+          setIsSwitchingCamera(false);
         }
       } catch (error) {
         if (!cancelled) {
+          setIsSwitchingCamera(false);
           setScannerError(
             error instanceof Error ? error.message : "Unable to start camera.",
           );
@@ -420,7 +482,30 @@ export function CheckInScanner() {
         });
       }
     };
-  }, [verifyScan]);
+  }, [selectedCameraId, verifyScan]);
+
+  const handleSwitchCamera = useCallback(() => {
+    if (!canSwitchCamera || isSwitchingCamera || isVerifying) {
+      return;
+    }
+
+    setScannerError(null);
+    setIsSwitchingCamera(true);
+
+    setSelectedCameraId((currentCameraId) => {
+      const preferredCameraId = pickPreferredCamera(availableCameras)?.id ?? null;
+      const baselineCameraId = currentCameraId ?? activeCameraId ?? preferredCameraId ?? availableCameras[0]?.id ?? null;
+
+      if (!baselineCameraId) {
+        return currentCameraId;
+      }
+
+      const currentIndex = availableCameras.findIndex((camera) => camera.id === baselineCameraId);
+      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % availableCameras.length : 0;
+
+      return availableCameras[nextIndex]?.id ?? currentCameraId;
+    });
+  }, [activeCameraId, availableCameras, canSwitchCamera, isSwitchingCamera, isVerifying]);
 
   async function handleManualSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -485,6 +570,34 @@ export function CheckInScanner() {
               </span>
             )}
           </button>
+
+          {canSwitchCamera && (
+            <button
+              type="button"
+              onClick={handleSwitchCamera}
+              disabled={isSwitchingCamera || isVerifying}
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label={`Switch camera (current: ${activeCameraLabel})`}
+              title={`Switch camera (current: ${activeCameraLabel})`}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={isSwitchingCamera ? "animate-spin" : ""}
+              >
+                <path d="M2.5 8a5.5 5.5 0 019.2-4" />
+                <polyline points="12.5 2.5 12.5 5.5 9.5 5.5" />
+                <path d="M13.5 8a5.5 5.5 0 01-9.2 4" />
+                <polyline points="3.5 13.5 3.5 10.5 6.5 10.5" />
+              </svg>
+            </button>
+          )}
         </div>
       </header>
 
