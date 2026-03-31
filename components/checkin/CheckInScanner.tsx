@@ -33,6 +33,18 @@ type VerifyResponse =
       code: string;
     };
 
+type ScannerDebugInfo = {
+  decodeHits: number;
+  frameErrors: number;
+  lastDecodedText: string;
+  lastExtractedToken: string;
+  verifyState: string;
+  verifyMessage: string;
+  cameraTarget: string;
+  activeDeviceId: string;
+  updatedAt: string;
+};
+
 /* ─── Helpers ─── */
 
 function createHistoryId(): string {
@@ -62,6 +74,27 @@ function getQrBoxSize(viewfinderWidth: number, viewfinderHeight: number): number
 
 function pickPreferredCamera(cameras: CameraDevice[]): CameraDevice | undefined {
   return cameras.find((camera) => /back|rear|environment/i.test(camera.label));
+}
+
+function cameraTargetToDebugLabel(target: string | MediaTrackConstraints): string {
+  if (typeof target === "string") {
+    return `device:${target}`;
+  }
+
+  try {
+    return JSON.stringify(target);
+  } catch {
+    return "unserializable-target";
+  }
+}
+
+function truncateDebugValue(value: string, maxLength = 72): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  const edgeLength = Math.floor((maxLength - 3) / 2);
+  return `${value.slice(0, edgeLength)}...${value.slice(-edgeLength)}`;
 }
 
 /* ─── Sub-components ─── */
@@ -187,6 +220,7 @@ export function CheckInScanner() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastTokenRef = useRef<string>("");
   const lastTokenSeenAtRef = useRef<number>(0);
+  const frameErrorCountRef = useRef<number>(0);
   const viewfinderWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const [manualInput, setManualInput] = useState("");
@@ -194,7 +228,19 @@ export function CheckInScanner() {
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [isScannerReady, setIsScannerReady] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDebug, setShowDebug] = useState(true);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+  const [debugInfo, setDebugInfo] = useState<ScannerDebugInfo>({
+    decodeHits: 0,
+    frameErrors: 0,
+    lastDecodedText: "-",
+    lastExtractedToken: "-",
+    verifyState: "idle",
+    verifyMessage: "Waiting for scan",
+    cameraTarget: "-",
+    activeDeviceId: "-",
+    updatedAt: "-",
+  });
 
   const [qrBoxSize, setQrBoxSize] = useState<number>(220);
 
@@ -210,6 +256,14 @@ export function CheckInScanner() {
 
   // Auto-clear the result banner after 4 seconds
   const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const updateDebug = useCallback((patch: Partial<ScannerDebugInfo>) => {
+    setDebugInfo((previous) => ({
+      ...previous,
+      ...patch,
+      updatedAt: formatTimestamp(),
+    }));
+  }, []);
 
   function showResult(
     status: "success" | "error",
@@ -238,8 +292,15 @@ export function CheckInScanner() {
 
   const verifyScan = useCallback(
     async (rawToken: string) => {
+      updateDebug({ lastDecodedText: rawToken });
+
       const token = extractTokenFromQrContent(rawToken);
       if (!token) {
+        updateDebug({
+          lastExtractedToken: "-",
+          verifyState: "token_invalid",
+          verifyMessage: "No token found in QR payload.",
+        });
         showResult("error", "Invalid QR code — no token found.");
         pushHistory({
           id: createHistoryId(),
@@ -250,8 +311,14 @@ export function CheckInScanner() {
         return;
       }
 
+      updateDebug({ lastExtractedToken: token });
+
       const now = Date.now();
       if (token === lastTokenRef.current && now - lastTokenSeenAtRef.current < 2500) {
+        updateDebug({
+          verifyState: "duplicate_skipped",
+          verifyMessage: "Duplicate token skipped (2.5s cooldown).",
+        });
         return;
       }
 
@@ -259,6 +326,10 @@ export function CheckInScanner() {
       lastTokenSeenAtRef.current = now;
 
       setIsVerifying(true);
+      updateDebug({
+        verifyState: "verifying",
+        verifyMessage: "Posting token to /api/verify",
+      });
 
       try {
         const response = await fetch("/api/verify", {
@@ -271,6 +342,7 @@ export function CheckInScanner() {
 
         if (response.ok && data.success) {
           const msg = `Entry allowed (${data.entryCount}/${data.maxEntries})`;
+          updateDebug({ verifyState: "verify_success", verifyMessage: msg });
           showResult("success", msg, data.name, data.entryCount, data.maxEntries);
           pushHistory({
             id: createHistoryId(),
@@ -283,6 +355,7 @@ export function CheckInScanner() {
         }
 
         const errMsg = "success" in data && !data.success ? data.error : "Entry denied.";
+        updateDebug({ verifyState: "verify_denied", verifyMessage: errMsg });
         showResult("error", errMsg);
         pushHistory({
           id: createHistoryId(),
@@ -292,6 +365,7 @@ export function CheckInScanner() {
         });
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Verification request failed.";
+        updateDebug({ verifyState: "verify_error", verifyMessage: msg });
         showResult("error", msg);
         pushHistory({
           id: createHistoryId(),
@@ -303,7 +377,7 @@ export function CheckInScanner() {
         setIsVerifying(false);
       }
     },
-    [pushHistory],
+    [pushHistory, updateDebug],
   );
 
   useEffect(() => {
@@ -332,12 +406,25 @@ export function CheckInScanner() {
     let cancelled = false;
 
     async function startScanner() {
+      frameErrorCountRef.current = 0;
+      updateDebug({
+        frameErrors: 0,
+        cameraTarget: "-",
+        activeDeviceId: "-",
+        verifyState: "camera_init",
+        verifyMessage: "Initializing camera scanner",
+      });
+
       try {
         const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
         const cameras = await Html5Qrcode.getCameras();
         if (cancelled) return;
 
         if (!cameras || cameras.length === 0) {
+          updateDebug({
+            verifyState: "camera_error",
+            verifyMessage: "No cameras detected on this device.",
+          });
           setScannerError("No camera found. Use the manual entry below.");
           return;
         }
@@ -350,8 +437,25 @@ export function CheckInScanner() {
         scannerRef.current = scanner;
 
         const preferredCamera = pickPreferredCamera(cameras);
-        const onScanSuccess = (decodedText: string) => { void verifyScan(decodedText); };
-        const onScanFailure = () => { /* ignore frame errors */ };
+        const onScanSuccess = (decodedText: string) => {
+          setDebugInfo((previous) => ({
+            ...previous,
+            decodeHits: previous.decodeHits + 1,
+            lastDecodedText: decodedText,
+            updatedAt: formatTimestamp(),
+          }));
+          void verifyScan(decodedText);
+        };
+        const onScanFailure = () => {
+          frameErrorCountRef.current += 1;
+          if (frameErrorCountRef.current % 20 === 0) {
+            setDebugInfo((previous) => ({
+              ...previous,
+              frameErrors: frameErrorCountRef.current,
+              updatedAt: formatTimestamp(),
+            }));
+          }
+        };
         const scanConfig = {
           fps: 15,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
@@ -374,11 +478,36 @@ export function CheckInScanner() {
 
         let startError: unknown;
         for (const cameraTarget of cameraStartAttempts) {
+          const targetLabel = cameraTargetToDebugLabel(cameraTarget);
           try {
+            updateDebug({
+              cameraTarget: targetLabel,
+              verifyState: "camera_attempt",
+              verifyMessage: `Trying ${targetLabel}`,
+            });
             await scanner.start(cameraTarget, scanConfig, onScanSuccess, onScanFailure);
+            const runningDeviceId = scanner.getRunningTrackSettings()?.deviceId;
+            updateDebug({
+              cameraTarget: targetLabel,
+              activeDeviceId:
+                typeof runningDeviceId === "string" && runningDeviceId.length > 0
+                  ? runningDeviceId
+                  : "-",
+              verifyState: "camera_ready",
+              verifyMessage: "Camera stream started.",
+              frameErrors: frameErrorCountRef.current,
+            });
             startError = undefined;
             break;
           } catch (error) {
+            updateDebug({
+              cameraTarget: targetLabel,
+              verifyState: "camera_attempt_failed",
+              verifyMessage:
+                error instanceof Error
+                  ? error.message
+                  : "Camera start attempt failed.",
+            });
             startError = error;
           }
         }
@@ -393,6 +522,13 @@ export function CheckInScanner() {
         }
       } catch (error) {
         if (!cancelled) {
+          updateDebug({
+            verifyState: "camera_error",
+            verifyMessage:
+              error instanceof Error
+                ? error.message
+                : "Unable to start camera.",
+          });
           setScannerError(
             error instanceof Error ? error.message : "Unable to start camera.",
           );
@@ -413,7 +549,7 @@ export function CheckInScanner() {
         });
       }
     };
-  }, [verifyScan]);
+  }, [updateDebug, verifyScan]);
 
   async function handleManualSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -478,6 +614,19 @@ export function CheckInScanner() {
               </span>
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowDebug((current) => !current)}
+            className={`flex h-8 min-w-10 items-center justify-center rounded-lg px-2 text-[10px] font-semibold tracking-wide transition-colors ${
+              showDebug
+                ? "bg-cyan-500/20 text-cyan-200"
+                : "bg-white/5 text-slate-400 hover:bg-white/10"
+            }`}
+            aria-label="Toggle scanner debug panel"
+          >
+            DBG
+          </button>
         </div>
       </header>
 
@@ -541,6 +690,25 @@ export function CheckInScanner() {
                   <path d="M14 8a6 6 0 01-6 6" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" />
                 </svg>
                 <span className="text-xs font-medium text-blue-300">Verifying...</span>
+              </div>
+            </div>
+          )}
+
+          {showDebug && (
+            <div className="absolute left-2 right-2 bottom-2 z-30 pointer-events-none rounded-xl border border-cyan-400/30 bg-black/75 p-2 text-[10px] font-mono text-cyan-100 backdrop-blur-sm">
+              <div className="mb-1 flex items-center justify-between text-cyan-200/90">
+                <span>Scanner Debug</span>
+                <span>{debugInfo.updatedAt}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                <p>decode: {debugInfo.decodeHits}</p>
+                <p>frameErr: {debugInfo.frameErrors}</p>
+                <p className="col-span-2">target: {truncateDebugValue(debugInfo.cameraTarget)}</p>
+                <p className="col-span-2">device: {truncateDebugValue(debugInfo.activeDeviceId)}</p>
+                <p className="col-span-2">state: {debugInfo.verifyState}</p>
+                <p className="col-span-2">msg: {truncateDebugValue(debugInfo.verifyMessage)}</p>
+                <p className="col-span-2">decoded: {truncateDebugValue(debugInfo.lastDecodedText)}</p>
+                <p className="col-span-2">token: {truncateDebugValue(debugInfo.lastExtractedToken)}</p>
               </div>
             </div>
           )}
