@@ -50,6 +50,7 @@ function formatTimestamp(): string {
 
 const MIN_QR_BOX_SIZE = 160;
 const MAX_QR_BOX_SIZE = 280;
+const RECENT_TOKEN_COOLDOWN_MS = 1200;
 
 function clampQrBoxSize(size: number): number {
   return Math.max(MIN_QR_BOX_SIZE, Math.min(size, MAX_QR_BOX_SIZE));
@@ -251,7 +252,7 @@ export function CheckInScanner() {
       }
 
       const now = Date.now();
-      if (token === lastTokenRef.current && now - lastTokenSeenAtRef.current < 2500) {
+      if (token === lastTokenRef.current && now - lastTokenSeenAtRef.current < RECENT_TOKEN_COOLDOWN_MS) {
         return;
       }
 
@@ -333,7 +334,7 @@ export function CheckInScanner() {
 
     async function startScanner() {
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
+        const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
         const cameras = await Html5Qrcode.getCameras();
         if (cancelled) return;
 
@@ -342,34 +343,39 @@ export function CheckInScanner() {
           return;
         }
 
-        const scanner = new Html5Qrcode("scanner-viewfinder");
+        const scanner = new Html5Qrcode("scanner-viewfinder", {
+          verbose: false,
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          useBarCodeDetectorIfSupported: true,
+        });
         scannerRef.current = scanner;
 
         const preferredCamera = pickPreferredCamera(cameras);
         const onScanSuccess = (decodedText: string) => { void verifyScan(decodedText); };
         const onScanFailure = () => { /* ignore frame errors */ };
         const scanConfig = {
-          fps: 10,
+          fps: 15,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
             const size = getQrBoxSize(viewfinderWidth, viewfinderHeight);
             return { width: size, height: size };
           },
           aspectRatio: 4 / 3,
           videoConstraints: {
-            facingMode: { ideal: "environment" },
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
         };
 
-        // Try a known rear camera first, then explicit environment constraints, then final fallback.
+        // Try known rear cameras first, then environment-facing constraint, then safe fallbacks.
         const cameraStartAttempts: Array<string | MediaTrackConstraints> = [];
         if (preferredCamera?.id) {
           cameraStartAttempts.push(preferredCamera.id);
         }
-        cameraStartAttempts.push({ facingMode: { exact: "environment" } });
-        cameraStartAttempts.push({ facingMode: { ideal: "environment" } });
-        if (!preferredCamera?.id && cameras[0]?.id) {
+        cameraStartAttempts.push({ facingMode: "environment" });
+        if (!preferredCamera?.id && cameras[cameras.length - 1]?.id) {
+          cameraStartAttempts.push(cameras[cameras.length - 1].id);
+        }
+        if (cameras[0]?.id) {
           cameraStartAttempts.push(cameras[0].id);
         }
 
