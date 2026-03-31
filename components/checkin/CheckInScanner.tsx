@@ -60,6 +60,11 @@ function getQrBoxSize(viewfinderWidth: number, viewfinderHeight: number): number
   return clampQrBoxSize(Math.floor(minEdge * 0.6));
 }
 
+function isLikelyMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent ?? "");
+}
+
 function pickPreferredCamera(cameras: CameraDevice[]): CameraDevice | undefined {
   return cameras.find((camera) => /back|rear|environment/i.test(camera.label));
 }
@@ -346,7 +351,23 @@ export function CheckInScanner() {
         scannerRef.current = scanner;
 
         const preferredCamera = pickPreferredCamera(cameras);
-        const cameraIdOrConfig = preferredCamera?.id ?? { facingMode: { ideal: "environment" } };
+        const prefersBackCamera = isLikelyMobileDevice();
+        const cameraCandidates: Array<string | MediaTrackConstraints> = [];
+
+        if (preferredCamera) {
+          cameraCandidates.push(preferredCamera.id);
+        }
+
+        if (prefersBackCamera && !preferredCamera) {
+          cameraCandidates.push({ facingMode: { exact: "environment" } });
+        }
+
+        cameraCandidates.push({ facingMode: { ideal: "environment" } });
+
+        if (cameras[0]) {
+          cameraCandidates.push(cameras[0].id);
+        }
+
         const scanConfig = {
           fps: 10,
           qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
@@ -360,24 +381,23 @@ export function CheckInScanner() {
           },
         };
 
-        try {
-          await scanner.start(
-            cameraIdOrConfig,
-            scanConfig,
-            (decodedText) => { void verifyScan(decodedText); },
-            () => { /* ignore frame errors */ },
-          );
-        } catch (error) {
-          if (!preferredCamera && cameras.length > 0) {
-            await scanner.start(
-              cameras[0].id,
-              scanConfig,
-              (decodedText) => { void verifyScan(decodedText); },
-              () => { /* ignore frame errors */ },
-            );
-          } else {
-            throw error;
+        const handleScanSuccess = (decodedText: string) => { void verifyScan(decodedText); };
+        const handleScanError = () => { /* ignore frame errors */ };
+        let started = false;
+        let startError: unknown;
+
+        for (const candidate of cameraCandidates) {
+          try {
+            await scanner.start(candidate, scanConfig, handleScanSuccess, handleScanError);
+            started = true;
+            break;
+          } catch (error) {
+            startError = error;
           }
+        }
+
+        if (!started) {
+          throw startError ?? new Error("Unable to start camera.");
         }
 
         if (!cancelled) {
