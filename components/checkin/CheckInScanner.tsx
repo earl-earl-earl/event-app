@@ -452,17 +452,22 @@ export function CheckInScanner() {
             setDebugInfo((previous) => ({
               ...previous,
               frameErrors: frameErrorCountRef.current,
+              verifyState:
+                previous.decodeHits === 0
+                  ? "no_code_found"
+                  : previous.verifyState,
+              verifyMessage:
+                previous.decodeHits === 0
+                  ? "No QR detected yet. Try moving closer, steadying, or improving light."
+                  : previous.verifyMessage,
               updatedAt: formatTimestamp(),
             }));
           }
         };
         const scanConfig = {
-          fps: 15,
-          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-            const size = getQrBoxSize(viewfinderWidth, viewfinderHeight);
-            return { width: size, height: size };
-          },
-          aspectRatio: 4 / 3,
+          fps: 12,
+          // Use full-frame scanning to avoid missed decodes from over-restrictive crop regions.
+          disableFlip: true,
         };
 
         // Keep rear-camera preference on phones while preserving broad browser compatibility.
