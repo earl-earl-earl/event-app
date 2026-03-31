@@ -49,7 +49,6 @@ export default function HomePage() {
           >
             Open Scanner
           </Link>
-          <span>·</span>
         </div>
       </section>
     </main>
