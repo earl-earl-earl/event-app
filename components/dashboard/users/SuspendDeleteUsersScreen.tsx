@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { Tooltip } from "react-tooltip";
 
 import { formatDate, type UserRole } from "@/components/dashboard/users/shared";
 
@@ -155,11 +157,11 @@ export function SuspendDeleteUsersScreen({ role }: { role: UserRole }) {
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Suspend/Delete {roleLabelPlural}</h1>
-          <p className="mt-1 text-sm text-slate-600">
+    <section className="card p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="page-header">
+          <h1 className="page-title">Suspend/Delete {roleLabelPlural}</h1>
+          <p className="page-subtitle">
             Manage {roleLabel.toLowerCase()} lifecycle by suspending, reactivating, or deleting accounts.
           </p>
         </div>
@@ -167,56 +169,58 @@ export function SuspendDeleteUsersScreen({ role }: { role: UserRole }) {
           type="button"
           onClick={() => void loadUsers()}
           disabled={isLoading}
-          className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="btn-secondary btn-icon text-slate-600 hover:text-slate-900"
+          data-tooltip-id="suspend-delete-actions"
+          data-tooltip-content={`Refresh ${roleLabelPlural.toLowerCase()}`}
         >
-          {isLoading ? "Refreshing..." : "Refresh"}
+          <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
         </button>
       </div>
 
       {errorMessage ? (
-        <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {errorMessage}
-        </p>
+        <div className="alert alert-error mt-4">{errorMessage}</div>
       ) : null}
 
       {successMessage ? (
-        <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {successMessage}
-        </p>
+        <div className="alert alert-success mt-4">{successMessage}</div>
       ) : null}
 
-      <div className="mt-4 overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
+      <div className="mt-4 overflow-x-auto rounded-lg border border-slate-100">
+        <table className="data-table">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-              <th className="px-3 py-2">Name</th>
-              <th className="px-3 py-2">Email</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Last Updated</th>
-              <th className="px-3 py-2">Actions</th>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Last Updated</th>
+              <th>Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700">
+          <tbody>
             {users.map((user) => {
               const isBusy = busyUserId === user.id;
               const isSelf = currentUserId === user.id;
 
               return (
                 <tr key={user.id}>
-                  <td className="px-3 py-2 font-medium text-slate-900">{user.fullName ?? "-"}</td>
-                  <td className="px-3 py-2">{user.email ?? "-"}</td>
-                  <td className="px-3 py-2">{user.isActive ? "Active" : "Suspended"}</td>
-                  <td className="px-3 py-2">{formatDate(user.updatedAt)}</td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-wrap gap-2">
+                  <td className="font-medium text-slate-900">{user.fullName ?? "-"}</td>
+                  <td>{user.email ?? "-"}</td>
+                  <td>
+                    <span className={`badge ${user.isActive ? "badge-success" : "badge-error"}`}>
+                      {user.isActive ? "Active" : "Suspended"}
+                    </span>
+                  </td>
+                  <td>{formatDate(user.updatedAt)}</td>
+                  <td>
+                    <div className="flex flex-wrap gap-1.5">
                       <button
                         type="button"
                         disabled={isBusy}
                         onClick={() => void handleToggleSuspend(user)}
-                        className="inline-flex h-8 items-center justify-center rounded-md border border-slate-300 px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="btn-secondary text-xs h-7 px-2.5"
                       >
                         {isBusy
-                          ? "Processing..."
+                          ? "..."
                           : user.isActive
                             ? "Suspend"
                             : "Reactivate"}
@@ -226,9 +230,9 @@ export function SuspendDeleteUsersScreen({ role }: { role: UserRole }) {
                         disabled={isBusy || isSelf}
                         onClick={() => void handleDelete(user)}
                         title={isSelf ? "You cannot delete your own account." : undefined}
-                        className="inline-flex h-8 items-center justify-center rounded-md border border-rose-300 px-3 text-xs font-medium text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="btn-danger"
                       >
-                        {isSelf ? "Delete (Self)" : "Delete"}
+                        {isSelf ? "Self" : "Delete"}
                       </button>
                     </div>
                   </td>
@@ -237,7 +241,7 @@ export function SuspendDeleteUsersScreen({ role }: { role: UserRole }) {
             })}
             {users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-4 text-center text-slate-500">
+                <td colSpan={5} className="text-center text-slate-400 py-6">
                   No {roleLabel.toLowerCase()} accounts found.
                 </td>
               </tr>
@@ -245,6 +249,7 @@ export function SuspendDeleteUsersScreen({ role }: { role: UserRole }) {
           </tbody>
         </table>
       </div>
+      <Tooltip id="suspend-delete-actions" place="bottom" style={{ zIndex: 50, fontSize: "0.75rem" }} />
     </section>
   );
 }

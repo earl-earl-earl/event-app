@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import type { PostgrestError } from "@supabase/supabase-js";
 
+import { serverEnv } from "@/lib/env/server";
 import { buildTicketLink } from "@/lib/ticket";
 import { getServiceSupabase } from "@/lib/supabase/service";
 import { signGuestToken } from "@/lib/tokens";
@@ -132,6 +133,11 @@ async function queueDispatchJobs(
   const supabase = getServiceSupabase();
 
   const dispatchJobs: DispatchInsert[] = [];
+  const smsEnabled = Boolean(
+    serverEnv.TWILIO_ACCOUNT_SID &&
+      serverEnv.TWILIO_AUTH_TOKEN &&
+      serverEnv.TWILIO_FROM_NUMBER,
+  );
 
   for (const insertedRow of insertedRows) {
     const ticketLink = buildTicketLink(insertedRow.guest.qr_token);
@@ -144,13 +150,15 @@ async function queueDispatchJobs(
       ticket_link: ticketLink,
     });
 
-    dispatchJobs.push({
-      guest_id: insertedRow.guest.id,
-      event_id: insertedRow.guest.event_id,
-      channel: "sms",
-      destination: insertedRow.guest.phone_number,
-      ticket_link: ticketLink,
-    });
+    if (smsEnabled) {
+      dispatchJobs.push({
+        guest_id: insertedRow.guest.id,
+        event_id: insertedRow.guest.event_id,
+        channel: "sms",
+        destination: insertedRow.guest.phone_number,
+        ticket_link: ticketLink,
+      });
+    }
   }
 
   let queuedCount = 0;

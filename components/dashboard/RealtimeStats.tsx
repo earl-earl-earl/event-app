@@ -66,31 +66,35 @@ export function RealtimeStats({ eventId }: RealtimeStatsProps) {
   }, [eventId, loadStats]);
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-900">Realtime Check-In Stats</h2>
+    <section className="card p-6">
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" />
+        </span>
+        <h2 className="text-base font-semibold text-slate-900">Realtime Check-In Stats</h2>
+      </div>
 
       {errorMessage ? (
-        <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {errorMessage}
-        </p>
+        <div className="alert alert-error mt-3">{errorMessage}</div>
       ) : null}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Total Guests</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div className="stat-card">
+          <p className="text-xs uppercase tracking-wider font-semibold text-slate-400">Total Guests</p>
+          <p className="mt-2 text-3xl font-bold text-slate-900">
             {stats?.totalGuests ?? "-"}
           </p>
         </div>
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-xs uppercase tracking-wide text-emerald-700">Checked In</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-900">
+        <div className="stat-card" style={{ borderColor: "#bbf7d0" }}>
+          <p className="text-xs uppercase tracking-wider font-semibold text-emerald-600">Checked In</p>
+          <p className="mt-2 text-3xl font-bold text-emerald-700">
             {stats?.checkedInCount ?? "-"}
           </p>
         </div>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-xs uppercase tracking-wide text-amber-700">Remaining</p>
-          <p className="mt-1 text-2xl font-semibold text-amber-900">
+        <div className="stat-card">
+          <p className="text-xs uppercase tracking-wider font-semibold text-blue-600">Remaining</p>
+          <p className="mt-2 text-3xl font-bold text-blue-700">
             {stats?.remainingGuests ?? "-"}
           </p>
         </div>

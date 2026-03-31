@@ -25,11 +25,7 @@ function formatDate(value: string): string {
   }).format(parsed);
 }
 
-export function DashboardOverview({
-  canUseScanner,
-}: {
-  canUseScanner: boolean;
-}) {
+export function DashboardOverview() {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -69,46 +65,45 @@ export function DashboardOverview({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Event Operations Dashboard</h1>
-        <p className="mt-2 max-w-3xl text-sm text-slate-600">
-          {canUseScanner
-            ? "Create events, import attendees via CSV, and monitor check-ins in real time across multiple scanner devices."
-            : "View event and guest data, monitor activity, and manage privileged accounts."}
-        </p>
-
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link
-            href="/dashboard/events"
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-700"
-          >
-            {canUseScanner ? "Manage Events" : "View Events"}
-          </Link>
-          <Link
-            href="/dashboard/guests"
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
-            {canUseScanner ? "Manage Guests" : "View Guests"}
-          </Link>
-          {canUseScanner ? (
-            <Link
-              href="/check-in"
-              className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 px-4 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
-            >
-              Open Scanner
-            </Link>
-          ) : null}
+      {/* Page Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="page-header">
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">
+            Create events, import attendees via CSV, and monitor check-ins in real time.
+          </p>
         </div>
-      </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap gap-2">
+          <Link href="/dashboard/events" className="btn-primary">
+            Manage Events
+          </Link>
+          <Link href="/dashboard/guests" className="btn-secondary">
+            Manage Guests
+          </Link>
+          <Link href="/check-in" className="btn-secondary">
+              <svg className="mr-2" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 5V3a1 1 0 011-1h4" />
+                <path d="M13 2h4a1 1 0 011 1v4" />
+                <path d="M18 13v4a1 1 0 01-1 1h-4" />
+                <path d="M7 18H3a1 1 0 01-1-1v-4" />
+                <line x1="2" y1="10" x2="18" y2="10" />
+              </svg>
+          </Link>
+        </div>
+      </div>
+
+      {/* Event Selector */}
+      <section className="card p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <label htmlFor="event-select" className="text-lg font-semibold text-slate-900">Select Active Event</label>
+          <label htmlFor="event-select" className="text-base font-semibold text-slate-900">
+            Select Active Event
+          </label>
           <select
             id="event-select"
             value={selectedEventId}
             onChange={(event) => setSelectedEventId(event.target.value)}
-            className="h-10 rounded-lg border border-slate-300 px-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+            className="form-input max-w-xs"
           >
             {events.length === 0 ? <option value="">No events</option> : null}
             {events.map((event) => (
@@ -120,46 +115,43 @@ export function DashboardOverview({
         </div>
 
         {errorMessage ? (
-          <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            {errorMessage}
-          </p>
+          <div className="alert alert-error mt-4">{errorMessage}</div>
         ) : null}
 
         {selectedEvent ? (
-          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            <p>
-              <span className="font-medium text-slate-900">{selectedEvent.name}</span>
-            </p>
-            <p>{formatDate(selectedEvent.date)}</p>
-            <p>{selectedEvent.location}</p>
+          <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/50 p-4 text-sm">
+            <p className="font-semibold text-slate-900">{selectedEvent.name}</p>
+            <p className="text-slate-500 mt-0.5">{formatDate(selectedEvent.date)}</p>
+            <p className="text-slate-500">{selectedEvent.location}</p>
           </div>
         ) : null}
       </section>
 
       {selectedEventId ? <RealtimeStats eventId={selectedEventId} /> : null}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Upcoming Events</h2>
-        <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+      {/* Upcoming Events Table */}
+      <section className="card p-6">
+        <h2 className="text-base font-semibold text-slate-900">Upcoming Events</h2>
+        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-100">
+          <table className="data-table">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Date</th>
-                <th className="px-3 py-2">Location</th>
+              <tr>
+                <th>Name</th>
+                <th>Date</th>
+                <th>Location</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody>
               {events.map((event) => (
                 <tr key={event.id}>
-                  <td className="px-3 py-2 font-medium text-slate-900">{event.name}</td>
-                  <td className="px-3 py-2">{formatDate(event.date)}</td>
-                  <td className="px-3 py-2">{event.location}</td>
+                  <td className="font-medium text-slate-900">{event.name}</td>
+                  <td>{formatDate(event.date)}</td>
+                  <td>{event.location}</td>
                 </tr>
               ))}
               {events.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-3 py-4 text-center text-slate-500">
+                  <td colSpan={3} className="text-center text-slate-400 py-6">
                     No events yet.
                   </td>
                 </tr>

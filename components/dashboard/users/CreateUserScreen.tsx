@@ -100,72 +100,74 @@ export function CreateUserScreen({ role }: { role: UserRole }) {
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h1 className="text-2xl font-semibold text-slate-900">Create {roleLabel}</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Create a new {roleLabel.toLowerCase()} account from this dedicated admin screen.
-      </p>
+    <section className="card p-6">
+      <div className="page-header">
+        <h1 className="page-title">Create {roleLabel}</h1>
+        <p className="page-subtitle">
+          Create a new {roleLabel.toLowerCase()} account from this dedicated admin screen.
+        </p>
+      </div>
 
-      <form className="mt-5 grid gap-3 md:grid-cols-2" onSubmit={handleCreateUser}>
-        <label className="text-sm text-slate-700">
-          Email
+      <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={handleCreateUser}>
+        <div>
+          <label className="form-label">Email</label>
           <input
             type="email"
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder={`${roleLabel.toLowerCase()}@company.com`}
-            className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
+            className="form-input"
           />
-        </label>
+        </div>
 
-        <label className="text-sm text-slate-700">
-          Full name
+        <div>
+          <label className="form-label">Full name</label>
           <input
             required
             value={fullName}
             onChange={(event) => setFullName(event.target.value)}
             placeholder={`${roleLabel} Name`}
-            className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
+            className="form-input"
           />
-        </label>
+        </div>
 
-        <label className="text-sm text-slate-700">
-          Phone number
+        <div>
+          <label className="form-label">Phone number</label>
           <input
             value={phoneNumber}
             onChange={(event) => setPhoneNumber(event.target.value)}
             placeholder="+639171234567"
-            className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
+            className="form-input"
           />
-        </label>
+        </div>
 
-        <label className="text-sm text-slate-700">
-          Password
+        <div>
+          <label className="form-label">Password</label>
           <input
             type="text"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Leave blank for server generation"
-            className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
+            className="form-input"
           />
-        </label>
+        </div>
 
         <div className="md:col-span-2 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={handleGeneratePasswordLocally}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="btn-secondary"
           >
             Generate Password
           </button>
 
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+          <label className="inline-flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
             <input
               type="checkbox"
               checked={generateOnServer}
               onChange={(event) => setGenerateOnServer(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-300"
+              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
             />
             Auto-generate on server if password is blank
           </label>
@@ -174,27 +176,23 @@ export function CreateUserScreen({ role }: { role: UserRole }) {
         <button
           type="submit"
           disabled={isCreating}
-          className="md:col-span-2 inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="md:col-span-2 btn-primary"
         >
           {isCreating ? "Creating..." : `Create ${roleLabel}`}
         </button>
       </form>
 
       {errorMessage ? (
-        <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {errorMessage}
-        </p>
+        <div className="alert alert-error mt-4">{errorMessage}</div>
       ) : null}
 
       {successMessage ? (
-        <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {successMessage}
-        </p>
+        <div className="alert alert-success mt-4">{successMessage}</div>
       ) : null}
 
       {generatedPassword ? (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Generated password: <span className="font-mono">{generatedPassword}</span>
+        <div className="alert alert-warning mt-4">
+          Generated password: <span className="font-mono font-semibold">{generatedPassword}</span>
         </div>
       ) : null}
     </section>

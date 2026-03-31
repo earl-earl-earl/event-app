@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { Trash2, Pencil, RefreshCw } from "lucide-react";
+import { Tooltip } from "react-tooltip";
 
 interface EventRecord {
   id: string;
@@ -115,101 +117,116 @@ export function EventManagement({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Event Management</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {canManageEvents
-            ? "Create and manage events before importing attendee CSV lists."
-            : "Admin accounts can view events. Organizer accounts can create and manage events."}
-        </p>
+      {/* Page Header + Create Form */}
+      <section className="card p-6">
+        <div className="page-header">
+          <h1 className="page-title">Event Management</h1>
+          <p className="page-subtitle">
+            {canManageEvents
+              ? "Create and manage events before importing attendee CSV lists."
+              : "Admin accounts can view events. Organizer accounts can create and manage events."}
+          </p>
+        </div>
 
         {canManageEvents ? (
           <form className="mt-5 grid gap-3 md:grid-cols-4" onSubmit={handleCreateEvent}>
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-              placeholder="Event name"
-              className="h-10 rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
-            />
-            <input
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              required
-              type="datetime-local"
-              placeholder="Event date and time"
-              className="h-10 rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
-            />
-            <input
-              value={location}
-              onChange={(event) => setLocation(event.target.value)}
-              required
-              placeholder="Venue"
-              className="h-10 rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
-            />
-            <button
-              type="submit"
-              disabled={isCreating}
-              className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isCreating ? "Creating..." : "Create Event"}
-            </button>
+            <div>
+              <label className="form-label">Event Name</label>
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+                placeholder="Annual Conference"
+                className="form-input"
+              />
+            </div>
+            <div>
+              <label className="form-label">Date & Time</label>
+              <input
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                required
+                type="datetime-local"
+                placeholder="Select date and time"
+                className="form-input"
+              />
+            </div>
+            <div>
+              <label className="form-label">Venue</label>
+              <input
+                value={location}
+                onChange={(event) => setLocation(event.target.value)}
+                required
+                placeholder="Convention Center"
+                className="form-input"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="submit"
+                disabled={isCreating}
+                className="btn-primary w-full"
+              >
+                {isCreating ? "Creating..." : "Create Event"}
+              </button>
+            </div>
           </form>
         ) : (
-          <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          <div className="alert alert-info mt-4">
             You have read-only access to events.
-          </p>
+          </div>
         )}
 
         {errorMessage ? (
-          <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            {errorMessage}
-          </p>
+          <div className="alert alert-error mt-4">{errorMessage}</div>
         ) : null}
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* Events Table */}
+      <section className="card p-6">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">All Events</h2>
+          <h2 className="text-base font-semibold text-slate-900">All Events</h2>
           <button
             type="button"
             onClick={() => void loadEvents()}
             disabled={isLoading}
-            className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-secondary btn-icon text-slate-600 hover:text-slate-900"
+            data-tooltip-id="events-actions"
+            data-tooltip-content="Refresh events"
           >
-            {isLoading ? "Refreshing..." : "Refresh"}
+            <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
           </button>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-100">
+          <table className="data-table">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Date</th>
-                <th className="px-3 py-2">Location</th>
-                <th className="px-3 py-2">Actions</th>
+              <tr>
+                <th>Name</th>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody>
               {events.map((item) => (
                 <tr key={item.id}>
-                  <td className="px-3 py-2 font-medium text-slate-900">{item.name}</td>
-                  <td className="px-3 py-2">{formatDate(item.date)}</td>
-                  <td className="px-3 py-2">{item.location}</td>
-                  <td className="px-3 py-2">
+                  <td className="font-medium text-slate-900">{item.name}</td>
+                  <td>{formatDate(item.date)}</td>
+                  <td>{item.location}</td>
+                  <td>
                     <Link
                       href={`/dashboard/guests?eventId=${item.id}`}
-                      className="text-sm font-medium text-slate-900 underline-offset-2 hover:underline"
+                      className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
                     >
-                      View Guests
+                      View Guests →
                     </Link>
                   </td>
                 </tr>
               ))}
               {events.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-4 text-center text-slate-500">
+                  <td colSpan={4} className="text-center text-slate-400 py-6">
                     No events found.
                   </td>
                 </tr>
@@ -218,6 +235,7 @@ export function EventManagement({
           </table>
         </div>
       </section>
+      <Tooltip id="events-actions" place="bottom" style={{ zIndex: 50, fontSize: "0.75rem" }} />
     </div>
   );
 }

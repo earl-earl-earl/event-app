@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { Tooltip } from "react-tooltip";
 
 import { formatDate, type UserRole } from "@/components/dashboard/users/shared";
 
@@ -55,73 +57,73 @@ export function PrivilegedAccountsScreen() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Privileged Account Center</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Open Admin and Organizer interfaces to manage accounts with list actions.
-        </p>
+      <section className="card p-6">
+        <div className="page-header">
+          <h1 className="page-title">Privileged Account Center</h1>
+          <p className="page-subtitle">
+            Open Admin and Organizer interfaces to manage accounts with list actions.
+          </p>
+        </div>
 
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link
-            href="/dashboard/admins"
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-700"
-          >
+          <Link href="/dashboard/admins" className="btn-primary">
             Open Admins
           </Link>
-          <Link
-            href="/dashboard/organizers"
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-          >
+          <Link href="/dashboard/organizers" className="btn-secondary">
             Open Organizers
           </Link>
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="card p-6">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">All Privileged Accounts</h2>
+          <h2 className="text-base font-semibold text-slate-900">All Privileged Accounts</h2>
           <button
             type="button"
             onClick={() => void loadUsers()}
             disabled={isLoading}
-            className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-secondary btn-icon text-slate-600 hover:text-slate-900"
+            data-tooltip-id="privileged-actions"
+            data-tooltip-content="Refresh accounts"
           >
-            {isLoading ? "Refreshing..." : "Refresh"}
+            <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
           </button>
         </div>
 
         {errorMessage ? (
-          <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            {errorMessage}
-          </p>
+          <div className="alert alert-error mt-4">{errorMessage}</div>
         ) : null}
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-100">
+          <table className="data-table">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-3 py-2">Role</th>
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Email</th>
-                <th className="px-3 py-2">Phone</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Created</th>
+              <tr>
+                <th>Role</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Status</th>
+                <th>Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody>
               {users.map((user) => (
                 <tr key={user.id}>
-                  <td className="px-3 py-2 font-medium text-slate-900 capitalize">{user.role}</td>
-                  <td className="px-3 py-2">{user.fullName ?? "-"}</td>
-                  <td className="px-3 py-2">{user.email ?? "-"}</td>
-                  <td className="px-3 py-2">{user.phoneNumber ?? "-"}</td>
-                  <td className="px-3 py-2">{user.isActive ? "Active" : "Inactive"}</td>
-                  <td className="px-3 py-2">{formatDate(user.createdAt)}</td>
+                  <td className="font-medium text-slate-900 capitalize">{user.role}</td>
+                  <td>{user.fullName ?? "-"}</td>
+                  <td>{user.email ?? "-"}</td>
+                  <td>{user.phoneNumber ?? "-"}</td>
+                  <td>
+                    <span className={`badge ${user.isActive ? "badge-success" : "badge-error"}`}>
+                      {user.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td>{formatDate(user.createdAt)}</td>
                 </tr>
               ))}
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-4 text-center text-slate-500">
+                  <td colSpan={6} className="text-center text-slate-400 py-6">
                     No privileged users found.
                   </td>
                 </tr>
@@ -130,6 +132,7 @@ export function PrivilegedAccountsScreen() {
           </table>
         </div>
       </section>
+      <Tooltip id="privileged-actions" place="bottom" style={{ zIndex: 50, fontSize: "0.75rem" }} />
     </div>
   );
 }

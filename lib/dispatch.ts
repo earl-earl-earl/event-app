@@ -1,6 +1,5 @@
 import "server-only";
 
-import { Resend } from "resend";
 import twilio from "twilio";
 
 import { serverEnv } from "@/lib/env/server";
@@ -23,14 +22,15 @@ export interface DispatchResult {
   error?: string;
 }
 
-const resendClient = serverEnv.RESEND_API_KEY
-  ? new Resend(serverEnv.RESEND_API_KEY)
-  : null;
+const smsEnabled = Boolean(
+  serverEnv.TWILIO_ACCOUNT_SID &&
+    serverEnv.TWILIO_AUTH_TOKEN &&
+    serverEnv.TWILIO_FROM_NUMBER,
+);
 
-const twilioClient =
-  serverEnv.TWILIO_ACCOUNT_SID && serverEnv.TWILIO_AUTH_TOKEN
-    ? twilio(serverEnv.TWILIO_ACCOUNT_SID, serverEnv.TWILIO_AUTH_TOKEN)
-    : null;
+const twilioClient = smsEnabled
+  ? twilio(serverEnv.TWILIO_ACCOUNT_SID!, serverEnv.TWILIO_AUTH_TOKEN!)
+  : null;
 
 function formatDate(dateString: string): string {
   const value = new Date(dateString);
@@ -46,11 +46,11 @@ function formatDate(dateString: string): string {
 }
 
 async function sendEmail(job: DispatchJob): Promise<DispatchResult> {
-  if (!resendClient || !serverEnv.RESEND_FROM_EMAIL) {
+  if (!serverEnv.BREVO_API_KEY || !serverEnv.BREVO_FROM_EMAIL) {
     return {
       ok: false,
       error:
-        "Email provider not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL.",
+        "Email provider not configured. Set BREVO_API_KEY and BREVO_FROM_EMAIL.",
     };
   }
 
@@ -69,30 +69,44 @@ async function sendEmail(job: DispatchJob): Promise<DispatchResult> {
     </div>
   `;
 
-  const { error } = await resendClient.emails.send({
-    from: serverEnv.RESEND_FROM_EMAIL,
-    to: [job.destination],
-    subject: `${job.event_name} Ticket`,
-    html: emailBody,
-  });
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": serverEnv.BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender: {
+          email: serverEnv.BREVO_FROM_EMAIL,
+          name: serverEnv.BREVO_FROM_NAME || job.event_name,
+        },
+        to: [{ email: job.destination, name: `${job.guest_first_name} ${job.guest_last_name}` }],
+        subject: `${job.event_name} Ticket`,
+        htmlContent: emailBody,
+      }),
+    });
 
-  if (error) {
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        ok: false,
+        error: `Brevo API error: ${response.status} - ${errorText}`,
+      };
+    }
+
+    return { ok: true };
+  } catch (error: any) {
     return {
       ok: false,
       error: typeof error.message === "string" ? error.message : "Email send failed.",
     };
   }
-
-  return { ok: true };
 }
 
 async function sendSms(job: DispatchJob): Promise<DispatchResult> {
-  if (!twilioClient || !serverEnv.TWILIO_FROM_NUMBER) {
-    return {
-      ok: false,
-      error:
-        "SMS provider not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER.",
-    };
+  if (!smsEnabled || !twilioClient) {
+    return { ok: true };
   }
 
   const eventDate = formatDate(job.event_date);

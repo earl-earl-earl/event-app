@@ -20,19 +20,21 @@ export default async function UsersLayout({
   }
 
   return (
-    <div className="space-y-4">
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Admin Account Center</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Manage organizer lifecycle and monitor privileged accounts from dedicated admin screens.
-        </p>
+    <div className="space-y-6">
+      <section className="card p-6">
+        <div className="page-header">
+          <h1 className="page-title">Admin Account Center</h1>
+          <p className="page-subtitle">
+            Manage organizer lifecycle and monitor privileged accounts from dedicated admin screens.
+          </p>
+        </div>
 
         <nav className="mt-4 flex flex-wrap gap-2">
           {accountLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition hover:bg-slate-50"
+              className="btn-secondary text-xs h-8 px-3"
             >
               {link.label}
             </Link>

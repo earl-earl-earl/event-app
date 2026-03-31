@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { Tooltip } from "react-tooltip";
 
 interface EventAttendancePoint {
   eventId: string;
@@ -221,118 +223,103 @@ export function AdminDashboardOverview() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Admin Analytics Dashboard</h1>
-            <p className="mt-1 max-w-3xl text-sm text-slate-600">
-              Monitor event performance, check-in progress, and account health from a single
-              admin-only overview.
-            </p>
-          </div>
+      {/* Page Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="page-header">
+          <h1 className="page-title">Admin Dashboard</h1>
+          <p className="page-subtitle">
+            Monitor event performance, check-in progress, and account health.
+          </p>
+        </div>
 
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => void loadStats()}
             disabled={isLoading}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-secondary btn-icon"
+            data-tooltip-id="dashboard-actions"
+            data-tooltip-content="Refresh dashboard"
           >
-            {isLoading ? "Refreshing..." : "Refresh Analytics"}
+            <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
           </button>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href="/dashboard/events"
-            className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition hover:bg-slate-50"
-          >
-            Event Records
-          </Link>
-          <Link
-            href="/dashboard/guests"
-            className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition hover:bg-slate-50"
-          >
-            Guest Records
-          </Link>
-          <Link
-            href="/dashboard/users"
-            className="inline-flex h-9 items-center justify-center rounded-md border border-slate-900 bg-slate-900 px-3 text-sm text-white transition hover:bg-slate-700"
-          >
+          <Link href="/dashboard/users" className="btn-primary">
             Account Center
           </Link>
         </div>
-      </section>
+      </div>
 
       {errorMessage ? (
-        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {errorMessage}
-        </p>
+        <div className="alert alert-error">{errorMessage}</div>
       ) : null}
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Total Events</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{stats?.totals.totalEvents ?? "-"}</p>
+      {/* KPI Cards */}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="stat-card">
+          <p className="text-xs uppercase tracking-wider font-semibold text-slate-400">Total Events</p>
+          <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.totals.totalEvents ?? "-"}</p>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Total Guests</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{stats?.totals.totalGuests ?? "-"}</p>
+        <div className="stat-card">
+          <p className="text-xs uppercase tracking-wider font-semibold text-slate-400">Total Guests</p>
+          <p className="mt-2 text-3xl font-bold text-slate-900">{stats?.totals.totalGuests ?? "-"}</p>
         </div>
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-emerald-700">Checked-In Guests</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-900">
+        <div className="stat-card" style={{ borderColor: "#bbf7d0" }}>
+          <p className="text-xs uppercase tracking-wider font-semibold text-emerald-600">Checked In</p>
+          <p className="mt-2 text-3xl font-bold text-emerald-700">
             {stats?.totals.checkedInGuests ?? "-"}
           </p>
         </div>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-amber-700">Check-In Rate</p>
-          <p className="mt-1 text-2xl font-semibold text-amber-900">
+        <div className="stat-card">
+          <p className="text-xs uppercase tracking-wider font-semibold text-blue-600">Check-In Rate</p>
+          <p className="mt-2 text-3xl font-bold text-blue-700">
             {stats ? `${stats.totals.checkInRatePercent}%` : "-"}
           </p>
         </div>
       </section>
 
+      {/* Main Grid */}
       <div className="grid gap-6 xl:grid-cols-5">
-        <section className="xl:col-span-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Event Check-In Progress</h2>
-          <p className="mt-1 text-sm text-slate-600">
+        {/* Event Check-In Progress */}
+        <section className="xl:col-span-3 card p-6">
+          <h2 className="text-base font-semibold text-slate-900">Event Check-In Progress</h2>
+          <p className="mt-1 text-sm text-slate-500">
             Top events by guest volume with current check-in completion.
           </p>
 
           {topEventAttendance.length === 0 ? (
-            <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            <p className="mt-4 text-sm text-slate-400 text-center py-6">
               No event attendance data yet.
             </p>
           ) : (
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 space-y-3">
               {topEventAttendance.map((event) => {
                 const checkedPercent = clampPercent(event.checkInRatePercent);
-                const filledSegments = Math.round((checkedPercent / 100) * 12);
 
                 return (
-                  <div key={event.eventId} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                  <div key={event.eventId} className="rounded-lg border border-slate-100 bg-slate-50/50 p-3.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <p className="font-medium text-slate-900">{event.eventName}</p>
-                        <p className="text-xs text-slate-500">{formatDate(event.eventDate)}</p>
+                        <p className="font-medium text-slate-900 text-sm">{event.eventName}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{formatDate(event.eventDate)}</p>
                       </div>
-                      <p className="text-sm font-medium text-slate-700">
-                        {event.checkedInGuests}/{event.totalGuests} checked in
+                      <p className="text-sm font-semibold text-slate-700">
+                        {event.checkedInGuests}/{event.totalGuests}
                       </p>
                     </div>
 
-                    <div className="mt-2 grid grid-cols-12 gap-1">
-                      {Array.from({ length: 12 }).map((_, index) => (
-                        <span
-                          key={`${event.eventId}-${index}`}
-                          className={`h-2 rounded-sm ${
-                            index < filledSegments ? "bg-emerald-500" : "bg-amber-300"
-                          }`}
-                        />
-                      ))}
+                    <div className="mt-2.5 h-2 rounded-full bg-slate-200 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${checkedPercent}%`,
+                          background: checkedPercent >= 75 ? "linear-gradient(90deg, #10b981, #059669)" :
+                            checkedPercent >= 50 ? "linear-gradient(90deg, #3b82f6, #2563eb)" :
+                            "linear-gradient(90deg, #f59e0b, #d97706)"
+                        }}
+                      />
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                    <div className="mt-1.5 flex items-center justify-between text-xs text-slate-400">
                       <span>{checkedPercent}% complete</span>
                       <span>{event.remainingGuests} remaining</span>
                     </div>
@@ -343,10 +330,11 @@ export function AdminDashboardOverview() {
           )}
         </section>
 
-        <section className="xl:col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Account Distribution</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Active and suspended account breakdown for admin governance.
+        {/* Account Distribution */}
+        <section className="xl:col-span-2 card p-6">
+          <h2 className="text-base font-semibold text-slate-900">Account Distribution</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Active and suspended account breakdown.
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -357,7 +345,7 @@ export function AdminDashboardOverview() {
                   cy="70"
                   r={roleChart.radius}
                   fill="none"
-                  stroke="#cbd5e1"
+                  stroke="#e2e8f0"
                   strokeWidth="20"
                 />
                 <circle
@@ -365,7 +353,7 @@ export function AdminDashboardOverview() {
                   cy="70"
                   r={roleChart.radius}
                   fill="none"
-                  stroke="#0f172a"
+                  stroke="#1e3a8a"
                   strokeWidth="20"
                   strokeDasharray={`${roleChart.adminArc} ${roleChart.circumference - roleChart.adminArc}`}
                 />
@@ -374,7 +362,7 @@ export function AdminDashboardOverview() {
                   cy="70"
                   r={roleChart.radius}
                   fill="none"
-                  stroke="#2563eb"
+                  stroke="#3b82f6"
                   strokeWidth="20"
                   strokeDasharray={`${roleChart.organizerArc} ${roleChart.circumference - roleChart.organizerArc}`}
                   strokeDashoffset={-roleChart.adminArc}
@@ -382,42 +370,52 @@ export function AdminDashboardOverview() {
               </svg>
               <div className="absolute inset-6 flex items-center justify-center rounded-full bg-white text-center">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Accounts</p>
-                  <p className="text-xl font-semibold text-slate-900">{totalAccounts}</p>
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Accounts</p>
+                  <p className="text-xl font-bold text-slate-900">{totalAccounts}</p>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2 text-sm">
-              <p className="text-slate-700">
-                <span className="font-semibold text-slate-900">Admins:</span>{" "}
-                {stats?.accounts.admins ?? 0} ({adminSharePercent}%)
-              </p>
-              <p className="text-slate-700">
-                <span className="font-semibold text-slate-900">Organizers:</span>{" "}
-                {stats?.accounts.organizers ?? 0} ({organizerSharePercent}%)
-              </p>
-              <p className="text-slate-700">
-                <span className="font-semibold text-slate-900">Active Organizers:</span>{" "}
-                {stats?.accounts.activeOrganizers ?? 0}
-              </p>
-              <p className="text-slate-700">
-                <span className="font-semibold text-slate-900">Suspended Organizers:</span>{" "}
-                {stats?.accounts.suspendedOrganizers ?? 0}
-              </p>
+            <div className="space-y-2.5 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-blue-900 shrink-0" />
+                <span className="text-slate-600">
+                  Admins: <span className="font-semibold text-slate-900">{stats?.accounts.admins ?? 0}</span>
+                  <span className="text-slate-400 ml-1">({adminSharePercent}%)</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-blue-500 shrink-0" />
+                <span className="text-slate-600">
+                  Organizers: <span className="font-semibold text-slate-900">{stats?.accounts.organizers ?? 0}</span>
+                  <span className="text-slate-400 ml-1">({organizerSharePercent}%)</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-slate-600">
+                  Active: <span className="font-semibold text-slate-900">{stats?.accounts.activeOrganizers ?? 0}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-red-400 shrink-0" />
+                <span className="text-slate-600">
+                  Suspended: <span className="font-semibold text-slate-900">{stats?.accounts.suspendedOrganizers ?? 0}</span>
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-              <p className="text-xs uppercase tracking-wide text-emerald-700">Active Admins</p>
-              <p className="mt-1 text-xl font-semibold text-emerald-900">
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-emerald-600">Active Admins</p>
+              <p className="mt-1 text-xl font-bold text-emerald-700">
                 {stats?.accounts.activeAdmins ?? 0}
               </p>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Inactive Admins</p>
-              <p className="mt-1 text-xl font-semibold text-slate-900">
+            <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Inactive Admins</p>
+              <p className="mt-1 text-xl font-bold text-slate-700">
                 {stats?.accounts.inactiveAdmins ?? 0}
               </p>
             </div>
@@ -425,9 +423,10 @@ export function AdminDashboardOverview() {
         </section>
       </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">Event Volume Trend</h2>
-        <p className="mt-1 text-sm text-slate-600">
+      {/* Event Volume Trend */}
+      <section className="card p-6">
+        <h2 className="text-base font-semibold text-slate-900">Event Volume Trend</h2>
+        <p className="mt-1 text-sm text-slate-500">
           Month-by-month event creation trend for capacity planning.
         </p>
 
@@ -444,27 +443,34 @@ export function AdminDashboardOverview() {
                 y1={monthlyChart.baselineY}
                 x2={monthlyChart.width}
                 y2={monthlyChart.baselineY}
-                stroke="#cbd5e1"
+                stroke="#e2e8f0"
                 strokeWidth={1}
               />
-              <polygon points={monthlyChart.areaPoints} fill="#dbeafe" opacity={0.8} />
+              <defs>
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+              <polygon points={monthlyChart.areaPoints} fill="url(#chartGradient)" />
               <polyline
                 points={monthlyChart.linePoints}
                 fill="none"
-                stroke="#1d4ed8"
-                strokeWidth={3}
+                stroke="#3b82f6"
+                strokeWidth={2.5}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
               {monthlyChart.points.map((point) => (
                 <g key={point.label}>
-                  <circle cx={point.x} cy={point.y} r={5} fill="#1d4ed8" />
+                  <circle cx={point.x} cy={point.y} r={4} fill="white" stroke="#3b82f6" strokeWidth="2" />
                   <text
                     x={point.x}
                     y={monthlyChart.baselineY + 16}
                     textAnchor="middle"
-                    fontSize={11}
-                    fill="#64748b"
+                    fontSize={10}
+                    fill="#94a3b8"
+                    fontFamily="inherit"
                   >
                     {point.label}
                   </text>
@@ -473,7 +479,9 @@ export function AdminDashboardOverview() {
                     y={point.y - 12}
                     textAnchor="middle"
                     fontSize={11}
+                    fontWeight="600"
                     fill="#1e293b"
+                    fontFamily="inherit"
                   >
                     {point.count}
                   </text>
@@ -482,61 +490,54 @@ export function AdminDashboardOverview() {
             </svg>
           </div>
         ) : (
-          <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          <p className="mt-4 text-sm text-slate-400 text-center py-6">
             No monthly trend data yet.
           </p>
         )}
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* Recent Account Activity */}
+      <section className="card p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">Recent Account Activity</h2>
+          <h2 className="text-base font-semibold text-slate-900">Recent Account Activity</h2>
           <div className="flex flex-wrap gap-2">
-            <Link
-              href="/dashboard/admins/create"
-              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition hover:bg-slate-50"
-            >
+            <Link href="/dashboard/admins/create" className="btn-secondary text-xs h-8 px-3">
               Add Admin
             </Link>
-            <Link
-              href="/dashboard/organizers/create"
-              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition hover:bg-slate-50"
-            >
+            <Link href="/dashboard/organizers/create" className="btn-secondary text-xs h-8 px-3">
               Add Organizer
-            </Link>
-            <Link
-              href="/dashboard/organizers"
-              className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-3 text-sm text-slate-700 transition hover:bg-slate-50"
-            >
-              View Organizers
             </Link>
           </div>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <div className="mt-4 overflow-x-auto rounded-lg border border-slate-100">
+          <table className="data-table">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-3 py-2">Role</th>
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Created</th>
-                <th className="px-3 py-2">Updated</th>
+              <tr>
+                <th>Role</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Updated</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody>
               {(stats?.recentAccounts ?? []).map((account) => (
                 <tr key={account.id}>
-                  <td className="px-3 py-2 font-medium text-slate-900 capitalize">{account.role}</td>
-                  <td className="px-3 py-2">{account.fullName ?? "-"}</td>
-                  <td className="px-3 py-2">{account.isActive ? "Active" : "Suspended"}</td>
-                  <td className="px-3 py-2">{formatDate(account.createdAt)}</td>
-                  <td className="px-3 py-2">{formatDate(account.updatedAt)}</td>
+                  <td className="font-medium text-slate-900 capitalize">{account.role}</td>
+                  <td>{account.fullName ?? "-"}</td>
+                  <td>
+                    <span className={`badge ${account.isActive ? "badge-success" : "badge-error"}`}>
+                      {account.isActive ? "Active" : "Suspended"}
+                    </span>
+                  </td>
+                  <td>{formatDate(account.createdAt)}</td>
+                  <td>{formatDate(account.updatedAt)}</td>
                 </tr>
               ))}
               {(stats?.recentAccounts.length ?? 0) === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3 py-4 text-center text-slate-500">
+                  <td colSpan={5} className="text-center text-slate-400 py-6">
                     No account activity found.
                   </td>
                 </tr>
@@ -545,6 +546,7 @@ export function AdminDashboardOverview() {
           </table>
         </div>
       </section>
+      <Tooltip id="dashboard-actions" place="bottom" style={{ zIndex: 50, fontSize: "0.75rem" }} />
     </div>
   );
 }
