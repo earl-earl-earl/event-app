@@ -25,7 +25,11 @@ function formatDate(value: string): string {
   }).format(parsed);
 }
 
-export function DashboardOverview() {
+export function DashboardOverview({
+  canUseScanner,
+}: {
+  canUseScanner: boolean;
+}) {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -68,8 +72,9 @@ export function DashboardOverview() {
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Event Operations Dashboard</h1>
         <p className="mt-2 max-w-3xl text-sm text-slate-600">
-          Create events, import attendees via CSV, and monitor check-ins in real time
-          across multiple scanner devices.
+          {canUseScanner
+            ? "Create events, import attendees via CSV, and monitor check-ins in real time across multiple scanner devices."
+            : "View event and guest data, monitor activity, and manage privileged accounts."}
         </p>
 
         <div className="mt-4 flex flex-wrap gap-3">
@@ -77,20 +82,22 @@ export function DashboardOverview() {
             href="/dashboard/events"
             className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-700"
           >
-            Manage Events
+            {canUseScanner ? "Manage Events" : "View Events"}
           </Link>
           <Link
             href="/dashboard/guests"
             className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
-            Manage Guests
+            {canUseScanner ? "Manage Guests" : "View Guests"}
           </Link>
-          <Link
-            href="/check-in"
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 px-4 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
-          >
-            Open Scanner
-          </Link>
+          {canUseScanner ? (
+            <Link
+              href="/check-in"
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 px-4 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+            >
+              Open Scanner
+            </Link>
+          ) : null}
         </div>
       </section>
 

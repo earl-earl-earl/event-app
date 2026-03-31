@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdminGuard } from "@/lib/auth/guards";
+import { requireManagementGuard } from "@/lib/auth/guards";
 import { jsonError } from "@/lib/http";
 import { getServiceSupabase } from "@/lib/supabase/service";
 
@@ -12,7 +12,7 @@ const querySchema = z.object({
 });
 
 export async function GET(request: Request) {
-  const guard = await requireAdminGuard();
+  const guard = await requireManagementGuard();
   if ("response" in guard) {
     return guard.response;
   }

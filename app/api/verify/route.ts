@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireStaffGuard } from "@/lib/auth/guards";
+import { requireOrganizerGuard } from "@/lib/auth/guards";
 import { serverEnv } from "@/lib/env/server";
 import { getRequestIpAddress, jsonError } from "@/lib/http";
 import { extractTokenFromQrContent } from "@/lib/qr";
@@ -27,7 +27,7 @@ const failureStatusMap: Record<string, number> = {
 };
 
 export async function POST(request: Request) {
-  const guard = await requireStaffGuard();
+  const guard = await requireOrganizerGuard();
   if ("response" in guard) {
     return guard.response;
   }

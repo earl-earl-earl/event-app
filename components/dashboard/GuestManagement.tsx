@@ -81,7 +81,11 @@ function stringifyMetadata(metadata: Json): string {
   }
 }
 
-export function GuestManagement() {
+export function GuestManagement({
+  canManageGuests,
+}: {
+  canManageGuests: boolean;
+}) {
   const urlSearchParams = useSearchParams();
 
   const [events, setEvents] = useState<EventRecord[]>([]);
@@ -348,7 +352,9 @@ export function GuestManagement() {
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Guest Management</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Upload attendee CSV files, track check-in status, and monitor dispatch queue.
+          {canManageGuests
+            ? "Upload attendee CSV files, track check-in status, and monitor dispatch queue."
+            : "Admin accounts can view guest records. Organizer accounts can import and dispatch guests."}
         </p>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -401,67 +407,76 @@ export function GuestManagement() {
         ) : null}
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-slate-900">CSV Upload</h2>
-        <form className="mt-4 flex flex-col gap-3 sm:flex-row" onSubmit={handleUploadCsv}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            placeholder="Select CSV file"
-            onChange={(event) => setCsvFile(event.target.files?.[0] ?? null)}
-            className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700"
-          />
-          <button
-            type="submit"
-            disabled={isUploadingCsv}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isUploadingCsv ? "Uploading..." : "Upload CSV"}
-          </button>
-          <button
-            type="button"
-            disabled={isRunningDispatch}
-            onClick={handleRunDispatch}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isRunningDispatch ? "Running..." : "Run Dispatch Worker"}
-          </button>
-        </form>
+      {canManageGuests ? (
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">CSV Upload</h2>
+          <form className="mt-4 flex flex-col gap-3 sm:flex-row" onSubmit={handleUploadCsv}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              placeholder="Select CSV file"
+              onChange={(event) => setCsvFile(event.target.files?.[0] ?? null)}
+              className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700"
+            />
+            <button
+              type="submit"
+              disabled={isUploadingCsv}
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isUploadingCsv ? "Uploading..." : "Upload CSV"}
+            </button>
+            <button
+              type="button"
+              disabled={isRunningDispatch}
+              onClick={handleRunDispatch}
+              className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isRunningDispatch ? "Running..." : "Run Dispatch Worker"}
+            </button>
+          </form>
 
-        {uploadResult ? (
-          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-            <p>
-              Inserted: {uploadResult.insertedCount}, Failed: {uploadResult.failedCount},
-              Dispatch jobs queued: {uploadResult.queuedDispatchJobs}
-            </p>
-            {uploadResult.queueWarnings.length > 0 ? (
-              <p className="mt-2 text-amber-800">
-                Warning: {uploadResult.queueWarnings.join(" ")}
+          {uploadResult ? (
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+              <p>
+                Inserted: {uploadResult.insertedCount}, Failed: {uploadResult.failedCount},
+                Dispatch jobs queued: {uploadResult.queuedDispatchJobs}
               </p>
-            ) : null}
-          </div>
-        ) : null}
+              {uploadResult.queueWarnings.length > 0 ? (
+                <p className="mt-2 text-amber-800">
+                  Warning: {uploadResult.queueWarnings.join(" ")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
-        {dispatchMessage ? (
-          <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            {dispatchMessage}
+          {dispatchMessage ? (
+            <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              {dispatchMessage}
+            </p>
+          ) : null}
+
+          {uploadResult && uploadResult.failures.length > 0 ? (
+            <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+              <p className="font-medium">Top CSV failures:</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {uploadResult.failures.slice(0, 8).map((failure, index) => (
+                  <li key={`${failure.rowNumber}-${index}`}>
+                    Row {failure.rowNumber}: {failure.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : (
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Import Permissions</h2>
+          <p className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            You have read-only access to guests. CSV upload and dispatch actions are organizer-only.
           </p>
-        ) : null}
-
-        {uploadResult && uploadResult.failures.length > 0 ? (
-          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
-            <p className="font-medium">Top CSV failures:</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              {uploadResult.failures.slice(0, 8).map((failure, index) => (
-                <li key={`${failure.rowNumber}-${index}`}>
-                  Row {failure.rowNumber}: {failure.reason}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </section>
+        </section>
+      )}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">

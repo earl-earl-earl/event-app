@@ -7,15 +7,32 @@ import { cookies } from "next/headers";
 import { publicEnv } from "@/lib/env/public";
 import type { Database } from "@/types/database";
 
-const ADMIN_ROLES = new Set(["admin", "organizer"]);
-const STAFF_ROLES = new Set(["admin", "organizer", "staff"]);
+const ADMIN_ROLES = new Set<Database["public"]["Enums"]["profile_role"]>([
+  "admin",
+]);
+const MANAGEMENT_ROLES = new Set<Database["public"]["Enums"]["profile_role"]>([
+  "admin",
+  "organizer",
+]);
+const ORGANIZER_ROLES = new Set<Database["public"]["Enums"]["profile_role"]>([
+  "organizer",
+]);
+
+export type ProfileRole = Database["public"]["Enums"]["profile_role"];
+export type ProfileRecord = Database["public"]["Tables"]["profiles"]["Row"];
+
+export interface AuthenticatedProfileSession {
+  user: User;
+  role: ProfileRole;
+  profile: ProfileRecord;
+}
 
 export async function getSupabaseServerAuthClient() {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
     publicEnv.NEXT_PUBLIC_SUPABASE_URL,
-    publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    publicEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     {
       cookies: {
         getAll() {
@@ -36,58 +53,57 @@ export async function getSupabaseServerAuthClient() {
 }
 
 export async function getAuthenticatedUser(): Promise<User | null> {
+  const session = await getAuthenticatedProfileSession();
+  return session?.user ?? null;
+}
+
+export async function getAuthenticatedProfileSession(): Promise<AuthenticatedProfileSession | null> {
   const supabase = await getSupabaseServerAuthClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return user;
-}
-
-export function getUserRole(user: User | null): string | null {
   if (!user) {
     return null;
   }
 
-  const roleFromAppMetadata = user.app_metadata?.role;
-  if (typeof roleFromAppMetadata === "string") {
-    return roleFromAppMetadata;
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, role, full_name, phone_number, is_active, created_by, created_at, updated_at")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !profile || !profile.is_active) {
+    return null;
   }
 
-  const roleFromUserMetadata = user.user_metadata?.role;
-  if (typeof roleFromUserMetadata === "string") {
-    return roleFromUserMetadata;
-  }
-
-  return null;
+  return {
+    user,
+    role: profile.role,
+    profile,
+  };
 }
 
-export function isAdminUser(user: User | null): boolean {
-  if (!user) {
-    return false;
-  }
-
-  const role = getUserRole(user);
-
-  // Backward-compatible default: if no role is set, treat authenticated users as admins.
+export function isAdminRole(role: ProfileRole | null): boolean {
   if (!role) {
-    return true;
+    return false;
   }
 
   return ADMIN_ROLES.has(role);
 }
 
-export function isStaffUser(user: User | null): boolean {
-  if (!user) {
+export function isManagementRole(role: ProfileRole | null): boolean {
+  if (!role) {
     return false;
   }
 
-  const role = getUserRole(user);
+  return MANAGEMENT_ROLES.has(role);
+}
 
-  // Backward-compatible default: if no role is set, treat authenticated users as staff.
+export function isOrganizerRole(role: ProfileRole | null): boolean {
   if (!role) {
-    return true;
+    return false;
   }
 
-  return STAFF_ROLES.has(role);
+  return ORGANIZER_ROLES.has(role);
 }

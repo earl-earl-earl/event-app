@@ -71,7 +71,7 @@ Copy `.env.example` to `.env.local` and fill all required values.
 Required:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `QR_JWT_SECRET` (>= 32 chars)

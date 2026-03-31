@@ -89,6 +89,39 @@ export interface Database {
           },
         ];
       };
+      profiles: {
+        Row: {
+          id: string;
+          role: Database["public"]["Enums"]["profile_role"];
+          full_name: string | null;
+          phone_number: string | null;
+          is_active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          role: Database["public"]["Enums"]["profile_role"];
+          full_name?: string | null;
+          phone_number?: string | null;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          role?: Database["public"]["Enums"]["profile_role"];
+          full_name?: string | null;
+          phone_number?: string | null;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       scan_logs: {
         Row: {
           id: number;
@@ -289,7 +322,9 @@ export interface Database {
         }[];
       };
     };
-    Enums: Record<string, never>;
+    Enums: {
+      profile_role: "admin" | "organizer";
+    };
     CompositeTypes: Record<string, never>;
   };
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdminGuard } from "@/lib/auth/guards";
+import { requireManagementGuard, requireOrganizerGuard } from "@/lib/auth/guards";
 import { jsonError } from "@/lib/http";
 import { getServiceSupabase } from "@/lib/supabase/service";
 
@@ -14,7 +14,7 @@ const createEventSchema = z.object({
 });
 
 export async function GET() {
-  const guard = await requireAdminGuard();
+  const guard = await requireManagementGuard();
   if ("response" in guard) {
     return guard.response;
   }
@@ -36,7 +36,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const guard = await requireAdminGuard();
+  const guard = await requireOrganizerGuard();
   if ("response" in guard) {
     return guard.response;
   }

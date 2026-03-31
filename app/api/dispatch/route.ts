@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { requireAdminGuard } from "@/lib/auth/guards";
+import { requireOrganizerGuard } from "@/lib/auth/guards";
 import { dispatchTicket } from "@/lib/dispatch";
 import { serverEnv } from "@/lib/env/server";
 import { jsonError } from "@/lib/http";
@@ -15,7 +15,7 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const guard = await requireAdminGuard();
+  const guard = await requireOrganizerGuard();
   if ("response" in guard) {
     return guard.response;
   }

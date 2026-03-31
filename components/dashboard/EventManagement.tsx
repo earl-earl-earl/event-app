@@ -23,7 +23,11 @@ function formatDate(value: string): string {
   }).format(parsed);
 }
 
-export function EventManagement() {
+export function EventManagement({
+  canManageEvents,
+}: {
+  canManageEvents: boolean;
+}) {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
@@ -114,40 +118,48 @@ export function EventManagement() {
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-semibold text-slate-900">Event Management</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Create and manage events before importing attendee CSV lists.
+          {canManageEvents
+            ? "Create and manage events before importing attendee CSV lists."
+            : "Admin accounts can view events. Organizer accounts can create and manage events."}
         </p>
 
-        <form className="mt-5 grid gap-3 md:grid-cols-4" onSubmit={handleCreateEvent}>
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-            placeholder="Event name"
-            className="h-10 rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
-          />
-          <input
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-            required
-            type="datetime-local"
-            placeholder="Event date and time"
-            className="h-10 rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
-          />
-          <input
-            value={location}
-            onChange={(event) => setLocation(event.target.value)}
-            required
-            placeholder="Venue"
-            className="h-10 rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
-          />
-          <button
-            type="submit"
-            disabled={isCreating}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isCreating ? "Creating..." : "Create Event"}
-          </button>
-        </form>
+        {canManageEvents ? (
+          <form className="mt-5 grid gap-3 md:grid-cols-4" onSubmit={handleCreateEvent}>
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+              placeholder="Event name"
+              className="h-10 rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
+            />
+            <input
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+              type="datetime-local"
+              placeholder="Event date and time"
+              className="h-10 rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
+            />
+            <input
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+              required
+              placeholder="Venue"
+              className="h-10 rounded-lg border border-slate-300 px-3 text-sm text-slate-900"
+            />
+            <button
+              type="submit"
+              disabled={isCreating}
+              className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isCreating ? "Creating..." : "Create Event"}
+            </button>
+          </form>
+        ) : (
+          <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            You have read-only access to events.
+          </p>
+        )}
 
         {errorMessage ? (
           <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">

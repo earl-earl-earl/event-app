@@ -1,10 +1,19 @@
 import type { User } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-import { getAuthenticatedUser, isAdminUser, isStaffUser } from "@/lib/auth/session";
+import {
+  getAuthenticatedProfileSession,
+  isAdminRole,
+  isManagementRole,
+  isOrganizerRole,
+  type ProfileRecord,
+  type ProfileRole,
+} from "@/lib/auth/session";
 
 interface GuardSuccess {
   user: User;
+  role: ProfileRole;
+  profile: ProfileRecord;
 }
 
 interface GuardFailure {
@@ -14,9 +23,9 @@ interface GuardFailure {
 export type GuardResult = GuardSuccess | GuardFailure;
 
 export async function requireAdminGuard(): Promise<GuardResult> {
-  const user = await getAuthenticatedUser();
+  const session = await getAuthenticatedProfileSession();
 
-  if (!user) {
+  if (!session) {
     return {
       response: NextResponse.json(
         { success: false, error: "Unauthorized." },
@@ -25,7 +34,7 @@ export async function requireAdminGuard(): Promise<GuardResult> {
     };
   }
 
-  if (!isAdminUser(user)) {
+  if (!isAdminRole(session.role)) {
     return {
       response: NextResponse.json(
         { success: false, error: "Forbidden." },
@@ -34,13 +43,17 @@ export async function requireAdminGuard(): Promise<GuardResult> {
     };
   }
 
-  return { user };
+  return session;
 }
 
 export async function requireStaffGuard(): Promise<GuardResult> {
-  const user = await getAuthenticatedUser();
+  return requireOrganizerGuard();
+}
 
-  if (!user) {
+export async function requireManagementGuard(): Promise<GuardResult> {
+  const session = await getAuthenticatedProfileSession();
+
+  if (!session) {
     return {
       response: NextResponse.json(
         { success: false, error: "Unauthorized." },
@@ -49,7 +62,7 @@ export async function requireStaffGuard(): Promise<GuardResult> {
     };
   }
 
-  if (!isStaffUser(user)) {
+  if (!isManagementRole(session.role)) {
     return {
       response: NextResponse.json(
         { success: false, error: "Forbidden." },
@@ -58,5 +71,29 @@ export async function requireStaffGuard(): Promise<GuardResult> {
     };
   }
 
-  return { user };
+  return session;
+}
+
+export async function requireOrganizerGuard(): Promise<GuardResult> {
+  const session = await getAuthenticatedProfileSession();
+
+  if (!session) {
+    return {
+      response: NextResponse.json(
+        { success: false, error: "Unauthorized." },
+        { status: 401 },
+      ),
+    };
+  }
+
+  if (!isOrganizerRole(session.role)) {
+    return {
+      response: NextResponse.json(
+        { success: false, error: "Forbidden." },
+        { status: 403 },
+      ),
+    };
+  }
+
+  return session;
 }
