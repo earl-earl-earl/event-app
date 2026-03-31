@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Html5Qrcode } from "html5-qrcode";
+import type { CameraDevice, Html5Qrcode } from "html5-qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { extractTokenFromQrContent } from "@/lib/qr";
@@ -46,6 +46,22 @@ function formatTimestamp(): string {
     second: "2-digit",
     hour12: true,
   }).format(new Date());
+}
+
+const MIN_QR_BOX_SIZE = 160;
+const MAX_QR_BOX_SIZE = 280;
+
+function clampQrBoxSize(size: number): number {
+  return Math.max(MIN_QR_BOX_SIZE, Math.min(size, MAX_QR_BOX_SIZE));
+}
+
+function getQrBoxSize(viewfinderWidth: number, viewfinderHeight: number): number {
+  const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+  return clampQrBoxSize(Math.floor(minEdge * 0.6));
+}
+
+function pickPreferredCamera(cameras: CameraDevice[]): CameraDevice | undefined {
+  return cameras.find((camera) => /back|rear|environment/i.test(camera.label));
 }
 
 /* ─── Sub-components ─── */
@@ -171,6 +187,7 @@ export function CheckInScanner() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastTokenRef = useRef<string>("");
   const lastTokenSeenAtRef = useRef<number>(0);
+  const viewfinderWrapperRef = useRef<HTMLDivElement | null>(null);
 
   const [manualInput, setManualInput] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -179,11 +196,17 @@ export function CheckInScanner() {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
 
+  const [qrBoxSize, setQrBoxSize] = useState<number>(220);
+
   const [latestStatus, setLatestStatus] = useState<ScanStatus>("idle");
   const [latestMessage, setLatestMessage] = useState("");
   const [latestName, setLatestName] = useState<string | undefined>(undefined);
   const [latestEntryCount, setLatestEntryCount] = useState<number | undefined>(undefined);
   const [latestMaxEntries, setLatestMaxEntries] = useState<number | undefined>(undefined);
+
+  const maskRadius = Math.max(Math.floor(qrBoxSize / 2), 80);
+  const maskInnerRadius = Math.max(maskRadius - 2, 60);
+  const scanLineWidth = Math.max(Math.round(qrBoxSize * 0.8), 140);
 
   // Auto-clear the result banner after 4 seconds
   const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -284,6 +307,28 @@ export function CheckInScanner() {
   );
 
   useEffect(() => {
+    const element = viewfinderWrapperRef.current;
+    if (!element) return;
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      setQrBoxSize(getQrBoxSize(rect.width, rect.height));
+    };
+
+    updateSize();
+
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function startScanner() {
@@ -300,12 +345,40 @@ export function CheckInScanner() {
         const scanner = new Html5Qrcode("scanner-viewfinder");
         scannerRef.current = scanner;
 
-        await scanner.start(
-          cameras[0].id,
-          { fps: 12, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
-          (decodedText) => { void verifyScan(decodedText); },
-          () => { /* ignore frame errors */ },
-        );
+        const preferredCamera = pickPreferredCamera(cameras);
+        const cameraIdOrConfig = preferredCamera?.id ?? { facingMode: { ideal: "environment" } };
+        const scanConfig = {
+          fps: 10,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const size = getQrBoxSize(viewfinderWidth, viewfinderHeight);
+            return { width: size, height: size };
+          },
+          aspectRatio: 4 / 3,
+          videoConstraints: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        };
+
+        try {
+          await scanner.start(
+            cameraIdOrConfig,
+            scanConfig,
+            (decodedText) => { void verifyScan(decodedText); },
+            () => { /* ignore frame errors */ },
+          );
+        } catch (error) {
+          if (!preferredCamera && cameras.length > 0) {
+            await scanner.start(
+              cameras[0].id,
+              scanConfig,
+              (decodedText) => { void verifyScan(decodedText); },
+              () => { /* ignore frame errors */ },
+            );
+          } else {
+            throw error;
+          }
+        }
 
         if (!cancelled) {
           setScannerError(null);
@@ -404,7 +477,11 @@ export function CheckInScanner() {
       {/* Camera viewfinder */}
       <div className="relative flex-1 flex flex-col">
         {/* Scanner container */}
-        <div className="relative w-full bg-black overflow-hidden" style={{ minHeight: "min(70vw, 420px)" }}>
+        <div
+          ref={viewfinderWrapperRef}
+          className="relative w-full max-w-[640px] mx-auto bg-black overflow-hidden rounded-3xl border border-white/10"
+          style={{ aspectRatio: "4 / 3" }}
+        >
           <div id="scanner-viewfinder" className="w-full h-full" />
 
           {/* Viewfinder overlay */}
@@ -414,12 +491,12 @@ export function CheckInScanner() {
               <div
                 className="absolute inset-0 bg-black/50"
                 style={{
-                  maskImage: "radial-gradient(circle 120px at 50% 50%, transparent 118px, black 120px)",
-                  WebkitMaskImage: "radial-gradient(circle 120px at 50% 50%, transparent 118px, black 120px)",
+                  maskImage: `radial-gradient(circle ${maskRadius}px at 50% 50%, transparent ${maskInnerRadius}px, black ${maskRadius}px)`,
+                  WebkitMaskImage: `radial-gradient(circle ${maskRadius}px at 50% 50%, transparent ${maskInnerRadius}px, black ${maskRadius}px)`,
                 }}
               />
               {/* Corner brackets */}
-              <div className="relative w-60 h-60">
+              <div className="relative" style={{ width: qrBoxSize, height: qrBoxSize }}>
                 <ScanViewfinder status={latestStatus} />
               </div>
             </div>
@@ -428,8 +505,8 @@ export function CheckInScanner() {
             {isScannerReady && latestStatus === "idle" && (
               <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
                 <div
-                  className="w-48 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-80"
-                  style={{ animation: "scanline 2s ease-in-out infinite" }}
+                  className="h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-80"
+                  style={{ width: scanLineWidth, animation: "scanline 2s ease-in-out infinite" }}
                 />
               </div>
             )}
@@ -556,6 +633,19 @@ export function CheckInScanner() {
 
       {/* Scanline animation */}
       <style>{`
+        #scanner-viewfinder {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        #scanner-viewfinder video,
+        #scanner-viewfinder canvas {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: contain;
+        }
+
         @keyframes scanline {
           0%, 100% { transform: translateY(-60px); opacity: 0; }
           20% { opacity: 1; }
