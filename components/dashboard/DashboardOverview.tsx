@@ -13,6 +13,10 @@ interface EventRecord {
   created_at: string;
 }
 
+interface DashboardOverviewProps {
+  canUseScanner?: boolean;
+}
+
 function formatDate(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -25,7 +29,7 @@ function formatDate(value: string): string {
   }).format(parsed);
 }
 
-export function DashboardOverview() {
+export function DashboardOverview({ canUseScanner = false }: DashboardOverviewProps) {
   const [events, setEvents] = useState<EventRecord[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -81,15 +85,27 @@ export function DashboardOverview() {
           <Link href="/dashboard/guests" className="btn-secondary">
             Manage Guests
           </Link>
-          <Link href="/check-in" className="btn-secondary">
-              <svg className="mr-2" width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          {canUseScanner ? (
+            <Link href="/check-in" className="btn-secondary">
+              <svg
+                className="mr-2"
+                width="14"
+                height="14"
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M2 5V3a1 1 0 011-1h4" />
                 <path d="M13 2h4a1 1 0 011 1v4" />
                 <path d="M18 13v4a1 1 0 01-1 1h-4" />
                 <path d="M7 18H3a1 1 0 01-1-1v-4" />
                 <line x1="2" y1="10" x2="18" y2="10" />
               </svg>
-          </Link>
+            </Link>
+          ) : null}
         </div>
       </div>
 
