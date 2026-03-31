@@ -2,10 +2,10 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100 px-4 py-8">
+    <main className="flex min-h-screen items-center justify-center bg-linear-to-br from-slate-50 via-blue-50/30 to-slate-100 px-4 py-8">
       <section className="w-full max-w-xl text-center">
         {/* Logo */}
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-500/20">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-linear-to-br from-blue-600 to-blue-700 shadow-lg shadow-blue-500/20">
           <svg width="28" height="28" viewBox="0 0 18 18" fill="white">
             <rect x="1" y="1" width="6" height="6" rx="1" />
             <rect x="11" y="1" width="6" height="6" rx="1" />
@@ -50,12 +50,6 @@ export default function HomePage() {
             Open Scanner
           </Link>
           <span>·</span>
-          <Link
-            href="/ticket"
-            className="hover:text-blue-600 transition-colors"
-          >
-            Ticket Endpoint
-          </Link>
         </div>
       </section>
     </main>
