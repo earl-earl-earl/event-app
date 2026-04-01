@@ -1,0 +1,12 @@
+- add 3 templates all through out the system (one for each: corporate, wedding, birthday)
+- event categories:
+    - personal free or paid
+    - corporate option
+    - intimate(or whatever is proper) option (for example, wedding, etc.)
+- templates must be editable on organizer side
+- if template has chosen, cannot change after
+
+nice to have:
+- visual/live updates when editing a template (drag and drop editor is good but optional)
+- customizable ticket (templates for ticket is good but optional)
+- detailed event (adding location, duration, start time & end time, google maps embed, etc.)

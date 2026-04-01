@@ -178,12 +178,16 @@ export async function PATCH(
   const normalizedFullName = parsedBody.data.fullName?.trim();
   const normalizedPhoneNumber = normalizePhoneNumber(parsedBody.data.phoneNumber);
 
-  if (
+  const shouldUpdateAuthUser =
     parsedBody.data.email !== undefined ||
     normalizedFullName !== undefined ||
     parsedBody.data.phoneNumber !== undefined ||
-    password !== undefined
-  ) {
+    password !== undefined ||
+    parsedBody.data.isActive !== undefined;
+
+  let didUpdateAuthUser = false;
+
+  if (shouldUpdateAuthUser) {
     const metadataUpdate: Record<string, string | null> = {};
 
     if (normalizedFullName !== undefined) {
@@ -194,6 +198,11 @@ export async function PATCH(
       metadataUpdate.phone_number = normalizedPhoneNumber;
     }
 
+    const appMetadataUpdate: Record<string, string | boolean> = {
+      role: target.profile.role,
+      is_active: parsedBody.data.isActive ?? target.profile.is_active,
+    };
+
     const { error: authUpdateError } = await supabase.auth.admin.updateUserById(
       parsedUserId.data,
       {
@@ -202,12 +211,15 @@ export async function PATCH(
           : {}),
         ...(password !== undefined ? { password } : {}),
         ...(Object.keys(metadataUpdate).length > 0 ? { user_metadata: metadataUpdate } : {}),
+        app_metadata: appMetadataUpdate,
       },
     );
 
     if (authUpdateError) {
       return jsonError(authUpdateError.message, 400, "auth_user_update_failed");
     }
+
+    didUpdateAuthUser = true;
   }
 
   const profileUpdatePayload: Record<string, unknown> = {};
@@ -222,6 +234,9 @@ export async function PATCH(
 
   if (parsedBody.data.isActive !== undefined) {
     profileUpdatePayload.is_active = parsedBody.data.isActive;
+  } else if (didUpdateAuthUser && target.profile.is_active === false) {
+    // Keep suspended state when metadata sync triggers profile updates.
+    profileUpdatePayload.is_active = false;
   }
 
   if (Object.keys(profileUpdatePayload).length > 0) {

@@ -1,1 +1,1 @@
-- camera too big, too close, and closes after 5 seconds
+- make the ticket page update real time like if the user has checked in, the ticket page should update to show that the user has checked in without needing to refresh the page
